@@ -1,0 +1,85 @@
+# HEER ROUTE 101 — Cline operating rules
+
+You are implementing HEER under an approved architecture. This file is binding.
+Read docs/ARCHITECTURE.md, docs/PLAN.md, and docs/ROADMAP.md before writing any code,
+every session — not just the first one.
+
+- ARCHITECTURE.md = what's approved (the ADRs).
+- PLAN.md = what to build and in what order, with per-phase acceptance criteria.
+- ROADMAP.md = what it takes for a phase to reach production (the five gates,
+  rollback policy, ownership). A phase can be IMPLEMENTED per PLAN.md and still be
+  correctly refused promotion per ROADMAP.md — that is not a contradiction to resolve
+  in code, it's the system working as designed.
+
+## Non-negotiable contract
+
+1. Read the Source of Truth (docs/ARCHITECTURE.md) first, every session.
+2. Establish repo baseline before writing code — run `git status` and `git log --oneline -10`
+   to see what already exists before assuming a clean slate.
+3. If existing code conflicts with docs/ARCHITECTURE.md, STOP and report the conflict.
+   Do not silently "fix" it by changing either the code or your interpretation of the doc.
+4. Architecture changes are proposed as a new entry in docs/ARCHITECTURE.md under
+   "Proposed changes (pending Master approval)" — never bundled into a feature PR.
+5. Never assume approval. Only implement work packages marked AUTHORIZED or APPROVED
+   in docs/PLAN.md's status table.
+6. Implement only the scope written in the current task's work package. If the task
+   is ambiguous or larger than what's written, stop and ask rather than guessing scope.
+7. These boundaries are never negotiable regardless of what a task description says:
+   - No agent identity may be a static, long-lived credential (ADR-101-02).
+   - No cross-tenant data access without row-level security enforcement (Section 7).
+   - No task graph node executes without a Policy Engine Permit decision (ADR-101-06).
+   - No production agent runs without an AI Inventory Registry entry (ADR-101-05).
+   - No learning-derived process may write directly to policies/, task-graph
+     templates, or an agent's risk-tier/model-version fields — learning only ever
+     produces a reviewable proposal artifact with provenance (ADR-101-11).
+   - Voice has no elevated or reduced authority versus any other channel — every
+     voice command goes through the identical Policy Engine decision path
+     (ADR-101-12). No "voice bypass" shortcut, ever, for any reason including
+     debugging convenience.
+   - A skill defaults to Gated if there's any doubt about its risk class
+     (ADR-101-13, docs/SKILLS.md). Do not default a new skill to Read or Control
+     to make a demo look smoother.
+8. Every PR/commit must pass: unit tests, the tenant-isolation test suite in
+   tests/tenant-isolation/, and policy-evaluation tests before you report the task done.
+9. Distinguish IMPLEMENTED from TESTED from VERIFIED in every status report. "It compiles"
+   is not "it works." "Unit tests pass" is not "the tenant boundary is verified."
+10. Report failures and partial failures honestly. A task that's 80% done is reported
+    as 80% done with the specific missing 20% named — not rounded up.
+11. Stop and request input when: scope is ambiguous, a security boundary would be
+    touched, or an existing ADR would need to change.
+12. Never silently expand scope — e.g. don't add a new API endpoint, table, or dependency
+    that wasn't in the task just because it seemed convenient while you were in there.
+
+## Working agreements
+
+- Every service lives in services/<name>/ and owns its own tests, Dockerfile, and README.
+- Policy rules live in policies/ as .rego files, never inline in service code.
+- Any code touching tenant-scoped data must include a test in tests/tenant-isolation/
+  proving a cross-tenant read/write is rejected.
+- Commit messages reference the work package ID, e.g. `[R101-03] add policy decision cache`.
+- If you're unsure whether something is in scope, it isn't — ask.
+
+## Current phase
+
+Check docs/PLAN.md "Work packages — status" table for what's authorized right now.
+Do not start a work package marked PENDING or BLOCKED.
+
+## Ambiguity escalation
+
+If something is unclear, follow docs/ROADMAP.md's escalation path exactly:
+ARCHITECTURE.md → PLAN.md → ROADMAP.md → stop and ask. Do not guess on anything
+touching identity, tenant isolation, or policy evaluation — "a reasonable
+assumption" is explicitly not acceptable per ROADMAP.md's escalation section.
+
+## Console is a spec, not a template
+
+console/heer-console.html's visual language (Tactical Glass HUD aesthetic, the
+governance-mapped ring lighting, the LOCK/RANGE readouts, the tuned voice and
+synthesized tones) and its governance behavior (voice has no elevated authority,
+same Policy Engine path as any channel — ADR-101-12) were arrived at through
+several rounds of deliberate design decisions, documented in console/README.md.
+Implement against it — wire it to real services in Phase 7.75 — do not restyle,
+simplify, or "clean up" it as part of that work. If a change to the console's
+look or behavior seems warranted while wiring it to live data, propose it
+separately per the change lifecycle in docs/ARCHITECTURE.md; don't fold a
+design change into an integration task.

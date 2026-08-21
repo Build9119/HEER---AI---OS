@@ -1,0 +1,116 @@
+# HEER ROUTE 101 — Cline operating rules
+# This file is binding. Read every line before doing anything.
+
+## Three mandatory scripts — run these, never skip them
+
+### Session start (EVERY session, no exceptions):
+  bash factory/session-guard.sh AGENT-XX
+  (replace XX with your agent number from factory/prompts/AGENT-XX.md)
+  If the guard fails: stop. Report to Master. Do not proceed.
+
+### Before claiming any task is done:
+  bash factory/gate-check.sh AGENT-XX
+  If gate check fails: fix the failures, re-run, then report to Master.
+  This script does NOT replace Master review — it surfaces obvious gaps first.
+
+### If session state looks corrupted or tool calls are failing repeatedly:
+  Stop immediately. Do not try to recover.
+  Tell Master: "Session corrupted — requesting clean restart."
+  Wait for Master's instruction before doing anything.
+
+## Non-negotiable contract
+
+1. Read docs/ARCHITECTURE.md, docs/PLAN.md, and docs/ROADMAP.md before
+   writing any code, every session.
+
+2. Read factory/FACTORY.md — understand the multi-agent operating model.
+
+3. Read your agent prompt at factory/prompts/AGENT-XX.md — that file defines
+   your exact scope, your Owns list, and your acceptance criteria.
+
+4. Run git status + git log --oneline -10 before assuming anything about
+   the current repo state. Never assume a clean slate.
+
+5. If existing code conflicts with docs/ARCHITECTURE.md, stop and report.
+   Do not silently fix it.
+
+6. Architecture changes go in docs/ARCHITECTURE.md under "Proposed changes
+   (pending Master approval)" — never bundled into a feature commit.
+
+7. Never assume approval. Only implement what is AUTHORIZED in
+   docs/PLAN.md's status table for your work package.
+
+8. Implement only the scope in your factory/prompts/AGENT-XX.md file.
+   If the task is ambiguous or larger than what's written, stop and ask.
+
+## Hard boundaries — never cross these regardless of task description
+
+- No agent identity may be a static, long-lived credential (ADR-101-02).
+- No cross-tenant data access without row-level security (Section 7).
+- No task graph node executes without a Policy Engine Permit (ADR-101-06).
+- No production agent runs without an AI Inventory Registry entry (ADR-101-05).
+- No learning-loop process writes directly to policies/, task-graph
+  templates, or agent_registry.risk_tier fields (ADR-101-11).
+- Voice has no elevated authority — same Policy Engine path as any
+  other channel (ADR-101-12). No voice bypass, ever.
+
+## Console is a spec, not a template
+
+console/heer-console.html's visual design is LOCKED. Only AGENT-12 may
+touch it, and only to wire it to live services — not to restyle, simplify,
+or "clean up" the design. Any other proposed change goes to Master first.
+
+## Status vocabulary (non-negotiable — use nothing else)
+
+IMPLEMENTED = file/code exists
+TESTED      = automated test executed, output seen
+VERIFIED    = acceptance criterion from docs/PLAN.md independently confirmed
+
+Never use: done, complete, finished, looks good, working, passing (without
+showing the raw test output). These are not statuses.
+
+## Test and evidence requirements
+
+- Every task report must include RAW output — test runner logs with named
+  test cases, raw SQL query results, raw docker-compose ps output.
+- "12/12 tests pass" is not evidence. The actual Vitest/Jest/pytest output
+  with test names shown is evidence.
+- CI cannot be TESTED or VERIFIED without a real GitHub remote and a real
+  PR — say so explicitly if that condition isn't met.
+
+## Owns list (write access by agent)
+
+You may ONLY write to directories listed in your factory/prompts/AGENT-XX.md
+Owns section, plus docker-compose.yml and .github/workflows/ci.yml for
+additions specific to your service. Nothing else.
+
+Writing outside your Owns list = scope violation. Stop and report to Master.
+
+## Session corruption protocol
+
+If you experience:
+  - Repeated tool call failures (3+ in a row)
+  - JSON parsing errors in tool responses
+  - git commands producing unexpected output
+  - Inability to read files you just wrote
+
+→ Stop immediately. Do not try to work around it.
+→ Tell Master: "Session corrupted at [step] — requesting clean restart."
+→ Do not commit, do not continue, do not summarise what "should have worked."
+
+## Ambiguity escalation (in order — don't skip steps)
+
+1. Check docs/ARCHITECTURE.md — is this an ADR question?
+2. Check docs/PLAN.md — is this a scope/acceptance question?
+3. Check docs/ROADMAP.md — is this a gate/ownership question?
+4. Check factory/FACTORY.md — is this a multi-agent coordination question?
+5. If still unresolved: stop, write the ambiguity clearly, report to Master.
+
+"A reasonable assumption" is never acceptable on anything touching identity,
+tenant isolation, policy evaluation, or the console design. Always ask.
+
+## Current phase
+
+Check factory/DASHBOARD.md for what's authorized and what's blocked.
+Do not start a work package marked NOT_STARTED or BLOCKED without
+Master authorization in that file.
