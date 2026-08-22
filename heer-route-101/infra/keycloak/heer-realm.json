@@ -1,0 +1,253 @@
+{
+  "realm": "heer",
+  "enabled": true,
+  "displayName": "HEER Identity & Access Management",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "passwordPolicy": "length(8) and notUsername() and lowerCase(1) and upperCase(1) and digit(1) and specialChars(1) and passwordHistory(3)",
+  "defaultSignatureAlgorithm": "RS256",
+  "accessTokenLifespan": 900,
+  "refreshTokenLifespan": 3600,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 28800,
+  "accessCodeLifespan": 60,
+  "accessCodeLifespanLogin": 60,
+  "accessCodeLifespanUserAction": 300,
+  "actionTokenGenerated": false,
+  "offlineSessionIdleTimeout": 2592000,
+  "offlineSessionMaxLifespan": 5184000,
+  "clientSessionIdleTimeout": 1800,
+  "clientSessionMaxLifespan": 36000,
+  "userSessionIdleTimeout": 1800,
+  "userSessionMaxLifespan": 28800,
+  "client": [
+    {
+      "clientId": "heer-console",
+      "name": "HEER Console",
+      "enabled": true,
+      "publicClient": true,
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "https://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "https://localhost:3000"
+      ],
+      "attributes": {
+        "post.login.orphan.session": "false",
+        "backchannel.logout.session.delete": "true",
+        "backchannel.logout.revoke.tokens": "true"
+      },
+      "protocol": "oidc",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": true,
+      "validRedirectUris": [
+        "http://localhost:3000/*",
+        "https://localhost:3000/*"
+      ],
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "tenant-scope"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "web3"
+      ],
+      "realmRoles": [
+        "user",
+        "admin"
+      ],
+      "clientRoles": [
+        {
+          "name": "console-operator",
+          "description": "Console operator role for the HEER UI"
+        }
+      ],
+      "defaultRoles": [
+        "user"
+      ]
+    },
+    {
+      "clientId": "heer-service-account",
+      "name": "HEER Service Account",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "heer-service-account-secret",
+      "protocol": "oidc",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": true,
+      "attributes": {
+        "backchannel.logout.session.delete": "true",
+        "backchannel.logout.revoke.tokens": "true"
+      },
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "tenant-scope"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "web3"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "email": "admin@heer.local",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin",
+        "user"
+      ],
+      "clientRoles": {
+        "heer-console": [
+          "console-operator"
+        ]
+      }
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "user",
+        "description": "Regular user role"
+      },
+      {
+        "name": "admin",
+        "description": "Administrative role"
+      },
+      {
+        "name": "agent",
+        "description": "Agent role for autonomous agents"
+      },
+      {
+        "name": "worker",
+        "description": "Worker role for remote workers"
+      }
+    ]
+  },
+  "scopes": [
+    {
+      "name": "tenant-scope",
+      "displayName": "Tenant Scope",
+      "description": "Custom scope that includes tenant information in the token"
+    }
+  ],
+  "protocolMappers": [
+    {
+      "name": "tenant-scope-mapper",
+      "protocol": "oidc",
+      "protocolMapper": "oidc-usermodel-attribute-mapper",
+      "consentRequired": false,
+      "config": {
+        "user.attribute.name": "tenant_id",
+        "claim.name": "tenant_id",
+        "jsonType": "String",
+        "multivalued": "false",
+        "aggregate.attributes": "false"
+      }
+    },
+    {
+      "name": "business-id-mapper",
+      "protocol": "oidc",
+      "protocolMapper": "oidc-usermodel-attribute-mapper",
+      "consentRequired": false,
+      "config": {
+        "user.attribute.name": "business_id",
+        "claim.name": "business_id",
+        "jsonType": "String",
+        "multivalued": "false",
+        "aggregate.attributes": "false"
+      }
+    },
+    {
+      "name": "agent-id-mapper",
+      "protocol": "oidc",
+      "protocolMapper": "oidc-usermodel-attribute-mapper",
+      "consentRequired": false,
+      "config": {
+        "user.attribute.name": "agent_id",
+        "claim.name": "agent_id",
+        "jsonType": "String",
+        "multivalued": "false",
+        "aggregate.attributes": "false"
+      }
+    },
+    {
+      "name": "worker-id-mapper",
+      "protocol": "oidc",
+      "protocolMapper": "oidc-usermodel-attribute-mapper",
+      "consentRequired": false,
+      "config": {
+        "user.attribute.name": "worker_id",
+        "claim.name": "worker_id",
+        "jsonType": "String",
+        "multivalued": "false",
+        "aggregate.attributes": "false"
+      }
+    }
+  ],
+  "eventsEnabled": true,
+  "adminEventsEnabled": true,
+  "eventsExpiration": 604800,
+  "enabledEventTypes": [
+    "LOGIN",
+    "LOGIN_ERROR",
+    "LOGOUT",
+    "REGISTER",
+    "REGISTER_ERROR",
+    "CODE_ERROR",
+    "IDENTITY_PROVIDER_LOGIN",
+    "IDENTITY_PROVIDER_LOGIN_ERROR",
+    "IDENTITY_PROVIDER_LINKED",
+    "IDENTITY_PROVIDER_UNLINKED",
+    "CLIENT_REGISTER",
+    "CLIENT_REGISTER_ERROR",
+    "CLIENT_CONFIG_UPDATE",
+    "CLIENT_UPDATE",
+    "CLIENT_DELETE",
+    "CLIENT_DELETE_ERROR",
+    "USER_UPDATE",
+    "USER_UPDATE_ERROR",
+    "USER_RESET_PASSWORD",
+    "USER_RESET_PASSWORD_ERROR",
+    "USER_ENABLE",
+    "USER_ENABLE_ERROR",
+    "USER_DISABLE",
+    "USER_DISABLE_ERROR",
+    "USER_GROUP_UPDATE",
+    "USER_GROUP_UPDATE_ERROR",
+    "USER_GROUP_CREATE",
+    "USER_GROUP_CREATE_ERROR",
+    "USER_GROUP_DELETE",
+    "USER_GROUP_DELETE_ERROR",
+    "USER_GROUP_UPDATE",
+    "USER_GROUP_UPDATE_ERROR",
+    "USER_GROUP_REMOVE",
+    "USER_GROUP_REMOVE_ERROR",
+    "USER_GROUP_ADD",
+    "USER_GROUP_ADD_ERROR"
+  ]
+}
