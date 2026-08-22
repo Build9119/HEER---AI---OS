@@ -14,7 +14,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-
   opa:
     image: openpolicyagent/opa:latest-debug
     command: ["run", "--server", "--addr=0.0.0.0:8181", "--diagnostic-addr=0.0.0.0:8182", "/policies"]
@@ -24,12 +23,11 @@ services:
     volumes:
       - ./policies:/policies
     healthcheck:
-      test: ["CMD", "/opa", "eval", "data"]
+      test: ["CMD-SHELL", "curl -fs http://localhost:8182/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
-
   redis:
     image: redis:7-alpine
     ports:
@@ -39,7 +37,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-
   redpanda:
     image: redpandadata/redpanda:latest
     command:
@@ -58,7 +55,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
-
 volumes:
   pgdata:
     name: pgdata

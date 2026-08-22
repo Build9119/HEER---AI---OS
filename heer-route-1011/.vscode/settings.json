@@ -1,0 +1,72 @@
+{
+  // HEER Factory — VS Code workspace settings
+  // These settings apply to ALL agent windows.
+  // They restrict what Cline can auto-approve so no agent
+  // can silently run destructive commands.
+
+  // ── Cline auto-approve policy ──────────────────────────────────────────
+  // READ and EDIT are auto-approved (low risk, fast feedback)
+  // COMMANDS require manual approval (default off — agent must ask)
+  "cline.autoApproveRead": true,
+  "cline.autoApproveEdit": true,
+  "cline.autoApproveCommand": false,
+
+  // Commands Cline is ALLOWED to run (after manual approval):
+  "cline.allowedCommands": [
+    "bash factory/session-guard.sh *",
+    "bash factory/gate-check.sh *",
+    "git status",
+    "git log *",
+    "git diff *",
+    "git show *",
+    "git add *",
+    "git commit *",
+    "docker-compose ps",
+    "docker compose ps",
+    "jq *",
+    "cat *",
+    "ls *",
+    "find *",
+    "wc *",
+    "grep *",
+    "npm test",
+    "npm run *",
+    "npx vitest run",
+    "psql * -c \"SELECT*\""
+  ],
+
+  // Commands Cline must NEVER run without explicit Master approval
+  // (these will be blocked or require a special override):
+  "cline.deniedCommands": [
+    "docker-compose up*",
+    "docker compose up*",
+    "docker-compose down*",
+    "docker compose down*",
+    "rm -rf*",
+    "sudo*",
+    "chmod 777*",
+    "git push*",
+    "git reset --hard*",
+    "git clean -fd*",
+    "curl * | bash*",
+    "wget * | bash*"
+  ],
+
+  // ── Editor settings for the factory ───────────────────────────────────
+  "editor.formatOnSave": true,
+  "editor.rulers": [100],
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/.git": false
+  },
+
+  // ── Terminal settings ──────────────────────────────────────────────────
+  "terminal.integrated.env.osx": {
+    "HEER_FACTORY": "1",
+    "HEER_REPO_ROOT": "${workspaceFolder}"
+  },
+  "terminal.integrated.env.linux": {
+    "HEER_FACTORY": "1",
+    "HEER_REPO_ROOT": "${workspaceFolder}"
+  }
+}

@@ -1,0 +1,623 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>HEER Operator Console</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script id="tailwind-config">
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      "colors": {
+        "on-primary": "#00363a","surface-container-low": "#1a1c20","on-surface-variant": "#b9cacb",
+        "primary-fixed-dim": "#00dbe9","surface-bright": "#37393e","primary-fixed": "#7df4ff",
+        "inverse-primary": "#006970","on-surface": "#e2e2e8","on-tertiary-fixed-variant": "#00530e",
+        "secondary": "#ffdb9d","on-primary-fixed": "#002022","on-secondary": "#412d00",
+        "on-secondary-fixed": "#271900","surface-container-lowest": "#0c0e12","on-background": "#e2e2e8",
+        "outline-variant": "#3b494b","tertiary-fixed-dim": "#00e639","inverse-on-surface": "#2f3035",
+        "primary": "#dbfcff","tertiary": "#ddffd3","on-secondary-fixed-variant": "#5e4200",
+        "on-tertiary": "#003907","error-container": "#93000a","outline": "#849495",
+        "on-primary-fixed-variant": "#004f54","surface-container": "#1e2024","inverse-surface": "#e2e2e8",
+        "tertiary-container": "#00fb40","surface-dim": "#111318","on-tertiary-fixed": "#002203",
+        "error": "#ffb4ab","secondary-fixed": "#ffdea8","on-primary-container": "#006970",
+        "surface-container-highest": "#333539","on-error": "#690005","secondary-fixed-dim": "#ffba20",
+        "surface-container-high": "#282a2e","background": "#111318","secondary-container": "#feb700",
+        "tertiary-fixed": "#72ff70","on-secondary-container": "#6b4b00","surface-tint": "#00dbe9",
+        "on-tertiary-container": "#006e16","on-error-container": "#ffdad6","surface-variant": "#333539",
+        "surface": "#111318","primary-container": "#00f0ff",
+        "reticle-accent": "#ff5fd8"
+      },
+      "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+      "spacing": { "panel-padding": "20px", "gutter": "16px", "margin": "24px", "unit": "4px" },
+      "fontFamily": {
+        "headline-md": ["Space Grotesk"], "body-base": ["Hanken Grotesk"],
+        "label-caps": ["JetBrains Mono"], "data-mono": ["JetBrains Mono"], "display-lg": ["Space Grotesk"]
+      },
+      "fontSize": {
+        "headline-md": ["24px", { "lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600" }],
+        "body-base": ["16px", { "lineHeight": "1.6", "letterSpacing": "0.01em", "fontWeight": "400" }],
+        "label-caps": ["11px", { "lineHeight": "1.2", "letterSpacing": "0.1em", "fontWeight": "700" }],
+        "data-mono": ["13px", { "lineHeight": "1.4", "letterSpacing": "0.03em", "fontWeight": "500" }],
+        "display-lg": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+      }
+    }
+  }
+}
+</script>
+<style>
+  body{ background-color:#0A0C10; color:#e2e2e8; overflow:hidden; }
+  .scanlines{ background:linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1)); background-size:100% 4px; pointer-events:none; }
+  .vignette{ background:radial-gradient(circle at center, transparent 40%, rgba(10,12,16,0.8) 100%); pointer-events:none; }
+  .hud-panel{ background:rgba(255,255,255,0.02); backdrop-filter:blur(20px); border:1px solid rgba(132,148,149,0.3); position:relative; }
+  .hud-panel::before, .hud-panel::after{ content:''; position:absolute; width:8px; height:8px; border-color:rgba(0,219,233,0.5); border-style:solid; pointer-events:none; }
+  .hud-panel::before{ top:-1px; left:-1px; border-width:1px 0 0 1px; }
+  .hud-panel::after{ bottom:-1px; right:-1px; border-width:0 1px 1px 0; }
+  .hud-panel.active{ border-color:rgba(0,219,233,0.5); box-shadow:inset 0 0 15px rgba(0,219,233,0.1); }
+  @keyframes blink{ 0%,100%{opacity:1;} 50%{opacity:0;} }
+  .live-indicator{ animation:blink 2s infinite; }
+  .no-scrollbar::-webkit-scrollbar{ display:none; }
+  .no-scrollbar{ -ms-overflow-style:none; scrollbar-width:none; }
+  .cursor-blink{ animation:blink 1s step-end infinite; }
+  .fade-in{ animation:fadeIn .35s ease; }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(3px);} to{opacity:1; transform:translateY(0);} }
+</style>
+</head>
+<body class="h-screen w-screen relative flex flex-col font-body-base text-body-base selection:bg-primary-container selection:text-on-primary-container">
+
+<div class="absolute inset-0 z-0">
+<div class="absolute inset-0 w-full h-full opacity-60" style="display:block;">
+<canvas id="shader-canvas" style="display:block;width:100%;height:100%" width="1280" height="1024"></canvas>
+<script>
+(function() {
+  const canvas = document.getElementById('shader-canvas');
+  function syncSize(){ const w=canvas.clientWidth||1280, h=canvas.clientHeight||720; if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;} }
+  if(typeof ResizeObserver !== 'undefined') new ResizeObserver(syncSize).observe(canvas);
+  syncSize();
+  const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+  if(!gl) return;
+  const vs = `attribute vec2 a_position; varying vec2 v_texCoord; void main(){ v_texCoord = a_position*0.5+0.5; gl_Position = vec4(a_position,0.0,1.0); }`;
+  const fs = `precision highp float; uniform float u_time; uniform vec2 u_resolution; varying vec2 v_texCoord;
+  float hash(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
+  void main(){
+    vec2 uv = v_texCoord; vec2 p = (uv-0.5)*2.0; p.x *= u_resolution.x/u_resolution.y;
+    float starfield = step(0.998, hash(uv*50.0)); starfield *= (0.5+0.5*sin(u_time+hash(uv)*6.28));
+    vec3 color = vec3(0.01,0.012,0.015); color += starfield*0.4;
+    float scanline = sin(uv.y*u_resolution.y*1.5)*0.02; color -= scanline;
+    float vignette = 1.0 - smoothstep(0.5,1.5,length(p)); color *= vignette;
+    vec2 grid = abs(fract(uv*20.0-0.5)-0.5)/fwidth(uv*20.0); float line = min(grid.x,grid.y);
+    color += (1.0-smoothstep(0.0,0.05,line))*0.02;
+    gl_FragColor = vec4(color,1.0);
+  }`;
+  function cs(type,src){ const s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s); return s; }
+  const prog = gl.createProgram();
+  gl.attachShader(prog, cs(gl.VERTEX_SHADER, vs)); gl.attachShader(prog, cs(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(prog); gl.useProgram(prog);
+  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+  const pos = gl.getAttribLocation(prog,'a_position'); gl.enableVertexAttribArray(pos); gl.vertexAttribPointer(pos,2,gl.FLOAT,false,0,0);
+  const uTime = gl.getUniformLocation(prog,'u_time'); const uRes = gl.getUniformLocation(prog,'u_resolution');
+  function render(t){
+    if(typeof ResizeObserver === 'undefined') syncSize();
+    gl.viewport(0,0,canvas.width,canvas.height);
+    if(uTime) gl.uniform1f(uTime, t*0.001);
+    if(uRes) gl.uniform2f(uRes, canvas.width, canvas.height);
+    gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+    requestAnimationFrame(render);
+  }
+  render(0);
+})();
+</script>
+</div>
+</div>
+<div class="absolute inset-0 z-10 scanlines"></div>
+<div class="absolute inset-0 z-10 vignette"></div>
+
+<!-- Top bar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin h-16 border-b border-outline-variant/30 backdrop-blur-xl bg-surface/10">
+  <div class="flex items-center gap-6">
+    <div class="text-headline-md font-headline-md tracking-widest text-primary-fixed-dim uppercase">HEER</div>
+    <div class="h-4 w-px bg-outline-variant/50"></div>
+    <div class="flex items-center gap-2 font-label-caps text-label-caps text-primary-fixed-dim">
+      <span class="w-2 h-2 rounded-full bg-primary-fixed-dim live-indicator"></span>
+      <span>GOVERNANCE: NOMINAL</span>
+    </div>
+    <div class="h-4 w-px bg-outline-variant/50 hidden md:block"></div>
+    <div class="font-label-caps text-label-caps text-on-surface-variant hidden md:block">K-1111 · PROD-EAST-1</div>
+  </div>
+  <div class="font-data-mono text-data-mono text-on-surface-variant flex items-center gap-4">
+    <span id="digital-clock">--:--:-- UTC</span>
+  </div>
+</header>
+
+<!-- Side nav -->
+<nav class="fixed left-0 top-16 bottom-0 w-64 z-40 flex-col py-panel-padding bg-surface/5 border-r border-outline-variant/20 backdrop-blur-md hidden lg:flex">
+  <div class="px-gutter mb-8 flex flex-col gap-1">
+    <div class="font-label-caps text-label-caps text-primary-fixed-dim mb-2">MODULE_01 // OPERATOR</div>
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 border border-primary-fixed-dim flex items-center justify-center bg-surface-container-highest">
+        <span class="material-symbols-outlined text-primary-fixed-dim" style="font-size:16px;">shield_person</span>
+      </div>
+      <div>
+        <div class="font-data-mono text-data-mono text-on-surface">OPERATOR_01</div>
+        <div class="font-label-caps text-label-caps text-tertiary-fixed-dim">STATUS: AUTHORIZED</div>
+      </div>
+    </div>
+  </div>
+  <div class="flex flex-col gap-1 flex-grow">
+    <a class="bg-primary-fixed-dim text-on-primary-fixed font-label-caps text-label-caps p-3 flex items-center gap-3 border-l-4 border-primary-container shadow-[0_0_15px_rgba(0,219,233,0.3)]" href="#">
+      <span class="material-symbols-outlined">terminal</span>COMMAND
+    </a>
+    <a class="text-on-surface-variant font-label-caps text-label-caps p-3 flex items-center gap-3 hover:bg-surface-container-high/40 transition-colors" href="#">
+      <span class="material-symbols-outlined">gavel</span>GOVERNANCE
+    </a>
+    <a class="text-on-surface-variant font-label-caps text-label-caps p-3 flex items-center gap-3 hover:bg-surface-container-high/40 transition-colors" href="#">
+      <span class="material-symbols-outlined">account_tree</span>ORCHESTRATION
+    </a>
+    <a class="text-on-surface-variant font-label-caps text-label-caps p-3 flex items-center gap-3 hover:bg-surface-container-high/40 transition-colors" href="#">
+      <span class="material-symbols-outlined">memory</span>EXECUTION
+    </a>
+    <a class="text-on-surface-variant font-label-caps text-label-caps p-3 flex items-center gap-3 hover:bg-surface-container-high/40 transition-colors" href="#">
+      <span class="material-symbols-outlined">list_alt</span>LOGS
+    </a>
+  </div>
+  <div class="px-gutter mt-auto flex flex-col gap-4">
+    <button id="ptt-btn" class="w-full bg-outline-variant/20 border border-outline-variant text-on-surface font-label-caps text-label-caps py-2 hover:bg-primary/10 hover:border-primary-fixed-dim transition-all duration-300 relative group">
+      <span class="absolute top-0 left-0 w-2 h-2 border-t border-l border-primary-fixed-dim"></span>
+      <span class="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-primary-fixed-dim"></span>
+      <span id="ptt-label">HOLD TO TALK</span>
+    </button>
+    <div class="font-label-caps text-label-caps text-on-surface-variant/60 leading-relaxed">
+      Voice has no elevated authority. Every command — spoken or typed — resolves through the same Policy Engine path.
+    </div>
+  </div>
+</nav>
+
+<!-- Main -->
+<main class="lg:ml-64 pt-16 h-full flex flex-col relative z-20">
+  <div class="h-8 border-b border-outline-variant/30 flex items-center px-margin gap-8 font-data-mono text-label-caps text-on-surface-variant bg-surface/30 backdrop-blur-sm overflow-hidden">
+    <div class="flex items-center gap-2"><span class="text-primary-fixed-dim">DECISIONS/M:</span><span class="text-on-surface" id="tel-dpm">142</span></div>
+    <div class="flex items-center gap-2"><span class="text-primary-fixed-dim">LATENCY:</span><span class="text-on-surface" id="tel-lat">42ms</span></div>
+    <div class="flex items-center gap-2"><span class="text-primary-fixed-dim">ACTIVE_WORKERS:</span><span class="text-on-surface">22</span></div>
+    <div class="flex items-center gap-2 ml-auto"><span class="text-tertiary-fixed-dim">ISOLATION: SECURE</span></div>
+  </div>
+
+  <div class="flex-1 grid grid-cols-12 gap-gutter p-margin h-[calc(100%-2rem)] overflow-hidden">
+
+    <!-- Left: Comm transcript -->
+    <div class="col-span-12 lg:col-span-3 hud-panel active flex flex-col h-full min-h-0">
+      <div class="p-3 border-b border-outline-variant/30 flex justify-between items-center bg-surface/20">
+        <span class="font-data-mono text-label-caps text-primary-fixed-dim">MODULE_02 // COMM_LINK</span>
+        <span class="material-symbols-outlined text-primary-fixed-dim" style="font-size:16px;">rss_feed</span>
+      </div>
+      <div id="transcript" class="flex-1 p-4 overflow-y-auto no-scrollbar flex flex-col gap-4 font-data-mono text-data-mono text-on-surface-variant min-h-0"></div>
+      <div class="p-3 border-t border-outline-variant/30 flex items-center gap-2 cursor-text" id="input-row">
+        <span class="text-primary-fixed-dim">&gt;</span>
+        <input id="type-input" class="flex-1 bg-transparent outline-none text-on-surface font-data-mono text-data-mono placeholder:text-on-surface-variant/40" placeholder="type or hold PTT to speak…" />
+        <span class="w-2 h-4 bg-primary-fixed-dim cursor-blink inline-block"></span>
+      </div>
+    </div>
+
+    <!-- Center: 3D core -->
+    <div class="col-span-12 lg:col-span-6 relative h-full flex flex-col items-center justify-center min-h-[280px]">
+      <!-- Decorative outer bezel (atmospheric only — not a governance-state ring) -->
+      <div class="absolute z-[5] pointer-events-none rounded-full border border-reticle-accent/25" id="bezel-inner" style="width:min(78%,560px); height:min(78%,560px); box-shadow:0 0 40px rgba(255,95,216,0.06), inset 0 0 40px rgba(255,95,216,0.04); transition:box-shadow .4s ease, border-color .4s ease;"></div>
+      <div class="absolute z-[5] pointer-events-none rounded-full border border-dashed border-reticle-accent/15 animate-[spin_90s_linear_infinite]" style="width:min(86%,610px); height:min(86%,610px);"></div>
+      <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+        <div id="threejs-container" style="width:100%;height:100%"></div>
+      </div>
+      <div class="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-8">
+        <div class="flex justify-between w-full">
+          <div class="font-data-mono text-label-caps text-outline" id="axis-x">AXIS_X: OPTIMAL</div>
+          <div class="font-data-mono text-label-caps text-outline" id="core-state">STATE: STANDBY</div>
+        </div>
+        <div class="flex justify-between w-full px-4">
+          <div class="font-data-mono text-label-caps text-outline" id="lock-status">LOCK: STANDBY</div>
+          <div class="font-data-mono text-label-caps text-outline" id="range-readout">RANGE: 0.00</div>
+        </div>
+        <div class="flex flex-col items-center gap-2 pointer-events-auto">
+          <div class="font-headline-md font-headline-md text-primary-fixed-dim tracking-widest text-sm" id="core-label">HEER IS IDLE</div>
+          <div class="font-data-mono text-label-caps text-on-surface-variant" id="core-sub">hold PTT and speak, or type in the comm link</div>
+        </div>
+        <div class="flex justify-between w-full">
+          <div class="font-data-mono text-label-caps text-outline">DECISION_ID: <span id="last-decision">NULL</span></div>
+          <div class="font-data-mono text-label-caps text-outline">POLICY: v14</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: HUD panels -->
+    <div class="col-span-12 lg:col-span-3 flex flex-col gap-gutter h-full min-h-0">
+      <div class="hud-panel flex flex-col flex-1 min-h-0">
+        <div class="p-2 border-b border-outline-variant/30 bg-surface/20">
+          <span class="font-data-mono text-label-caps text-on-surface-variant">MODULE_03 // GOV_FEED</span>
+        </div>
+        <div id="feed" class="p-3 flex flex-col gap-3 font-data-mono text-data-mono overflow-y-auto no-scrollbar min-h-0"></div>
+      </div>
+
+      <div class="hud-panel flex flex-col flex-1 min-h-0">
+        <div class="p-2 border-b border-outline-variant/30 bg-surface/20">
+          <span class="font-data-mono text-label-caps text-on-surface-variant">MODULE_04 // MISSIONS</span>
+        </div>
+        <div class="p-3 flex flex-col gap-4">
+          <div class="flex flex-col gap-1">
+            <div class="flex justify-between font-label-caps text-label-caps text-on-surface-variant"><span>QUARTERLY_CLOSE</span><span>72%</span></div>
+            <div class="flex gap-0.5 h-3">
+              <div class="flex-1 bg-primary-fixed-dim shadow-[0_0_5px_rgba(0,219,233,0.5)]"></div>
+              <div class="flex-1 bg-primary-fixed-dim shadow-[0_0_5px_rgba(0,219,233,0.5)]"></div>
+              <div class="flex-1 bg-primary-fixed-dim shadow-[0_0_5px_rgba(0,219,233,0.5)]"></div>
+              <div class="flex-1 bg-outline-variant/30"></div>
+            </div>
+          </div>
+          <div class="flex flex-col gap-1">
+            <div class="flex justify-between font-label-caps text-label-caps text-on-surface-variant"><span>VENDOR_REVIEW</span><span>41%</span></div>
+            <div class="flex gap-0.5 h-3">
+              <div class="flex-1 bg-secondary-fixed-dim shadow-[0_0_5px_rgba(255,186,32,0.5)]"></div>
+              <div class="flex-1 bg-outline-variant/30"></div>
+              <div class="flex-1 bg-outline-variant/30"></div>
+              <div class="flex-1 bg-outline-variant/30"></div>
+            </div>
+          </div>
+          <div class="flex flex-col gap-1">
+            <div class="flex justify-between font-label-caps text-label-caps text-on-surface-variant"><span>SUPPORT_TRIAGE</span><span>96%</span></div>
+            <div class="flex gap-0.5 h-3">
+              <div class="flex-1 bg-tertiary-fixed-dim shadow-[0_0_5px_rgba(0,230,57,0.5)]"></div>
+              <div class="flex-1 bg-tertiary-fixed-dim shadow-[0_0_5px_rgba(0,230,57,0.5)]"></div>
+              <div class="flex-1 bg-tertiary-fixed-dim shadow-[0_0_5px_rgba(0,230,57,0.5)]"></div>
+              <div class="flex-1 bg-tertiary-fixed-dim shadow-[0_0_5px_rgba(0,230,57,0.5)]"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hud-panel flex flex-col flex-1 min-h-0">
+        <div class="p-2 border-b border-outline-variant/30 bg-surface/20">
+          <span class="font-data-mono text-label-caps text-on-surface-variant">MODULE_05 // SKILLS</span>
+        </div>
+        <div class="p-3 flex flex-col gap-2 font-data-mono text-data-mono">
+          <div class="flex items-center gap-3"><span class="w-1.5 h-1.5 bg-tertiary-fixed-dim rounded-full live-indicator shadow-[0_0_4px_rgba(0,230,57,0.8)]"></span><span class="text-on-surface">STATUS_REPORTING</span><span class="ml-auto text-label-caps opacity-50">[ON]</span></div>
+          <div class="flex items-center gap-3"><span class="w-1.5 h-1.5 bg-tertiary-fixed-dim rounded-full live-indicator shadow-[0_0_4px_rgba(0,230,57,0.8)]"></span><span class="text-on-surface">EXCEPTIONS_REVIEW</span><span class="ml-auto text-label-caps opacity-50">[ON]</span></div>
+          <div class="flex items-center gap-3"><span class="w-1.5 h-1.5 bg-tertiary-fixed-dim rounded-full live-indicator shadow-[0_0_4px_rgba(0,230,57,0.8)]"></span><span class="text-on-surface">MISSION_CONTROL</span><span class="ml-auto text-label-caps opacity-50">[ON]</span></div>
+          <div class="flex items-center gap-3"><span class="w-1.5 h-1.5 bg-secondary-fixed-dim rounded-full"></span><span class="text-on-surface-variant">FINANCIAL_ACTIONS</span><span class="ml-auto text-label-caps opacity-50 text-secondary-fixed-dim">[GATED]</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="https://ajax.googleapis.com/ajax/libs/threejs/r125/three.min.js"></script>
+<script>
+// ================= Three.js voice core =================
+let heerState = 'idle'; // idle | listening | thinking | speaking
+const container = document.getElementById('threejs-container');
+const width = () => container.clientWidth || 400;
+const height = () => container.clientHeight || 400;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, width()/height(), 0.1, 1000);
+camera.position.z = 10;
+const renderer = new THREE.WebGLRenderer({ alpha:true, antialias:true });
+renderer.setSize(width(), height());
+renderer.setPixelRatio(window.devicePixelRatio);
+container.appendChild(renderer.domElement);
+
+const stateColors = {
+  idle:      new THREE.Color(0x00f0ff),
+  listening: new THREE.Color(0x00f0ff),
+  thinking:  new THREE.Color(0x9b7eff),
+  speaking:  new THREE.Color(0x00e639)
+};
+
+const orbMaterial = new THREE.MeshBasicMaterial({ color: stateColors.idle, transparent:true, opacity:0.85 });
+const glowMat = new THREE.MeshBasicMaterial({ color: stateColors.idle, transparent:true, opacity:0.2 });
+const orbGroup = new THREE.Group();
+const core = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), orbMaterial);
+const glow = new THREE.Mesh(new THREE.SphereGeometry(1.2, 32, 32), glowMat);
+orbGroup.add(core); orbGroup.add(glow);
+scene.add(orbGroup);
+
+function createRing(radius, count, name){
+  const group = new THREE.Group(); group.name = name;
+  const geo = new THREE.BoxGeometry(0.05, 0.22, 0.01);
+  for(let i=0;i<count;i++){
+    const mat = new THREE.MeshBasicMaterial({ color: stateColors.idle, transparent:true, opacity:0.25 });
+    const mesh = new THREE.Mesh(geo, mat);
+    const angle = (i/count) * Math.PI*2;
+    mesh.position.set(Math.cos(angle)*radius, Math.sin(angle)*radius, 0);
+    mesh.rotation.z = angle;
+    group.add(mesh);
+  }
+  return group;
+}
+const ringGov = createRing(2.5, 48, 'gov');   // governance
+const ringOrch = createRing(3.4, 40, 'orch'); // orchestration
+const ringExec = createRing(4.3, 32, 'exec'); // execution
+scene.add(ringGov, ringOrch, ringExec);
+const ringMap = { gov: ringGov, orch: ringOrch, exec: ringExec };
+
+let activeRing = null; // which ring is currently "lit" during a command
+let activeRingUntil = 0;
+
+function setRingColor(ring, color, opacityBase){
+  ring.children.forEach(c => { c.material.color.copy(color); });
+}
+
+const animate = () => {
+  requestAnimationFrame(animate);
+  const time = Date.now() * 0.001;
+
+  let pulseSpeed = 4, targetColor = stateColors.idle;
+  if(heerState === 'listening'){ pulseSpeed = 7; targetColor = stateColors.listening; }
+  else if(heerState === 'thinking'){ pulseSpeed = 10; targetColor = stateColors.thinking; }
+  else if(heerState === 'speaking'){ pulseSpeed = 14; targetColor = stateColors.speaking; }
+
+  const s = 1 + Math.sin(time * pulseSpeed) * (heerState === 'idle' ? 0.06 : 0.12);
+  core.scale.set(s,s,s); glow.scale.set(s*1.2,s*1.2,s*1.2);
+  glow.material.opacity = 0.15 + Math.sin(time*pulseSpeed)*0.08;
+  orbMaterial.color.lerp(targetColor, 0.08);
+  glowMat.color.lerp(targetColor, 0.08);
+
+  ringGov.rotation.z += 0.0015;
+  ringOrch.rotation.z -= 0.0011;
+  ringExec.rotation.z += 0.0008;
+
+  ['gov','orch','exec'].forEach(key => {
+    const ring = ringMap[key];
+    const isActive = (activeRing === key) && (Date.now() < activeRingUntil);
+    ring.children.forEach((child, cIndex) => {
+      const phase = (time * 2.0) - (cIndex * 0.08);
+      const idleFlicker = 0.15 + Math.max(0, Math.sin(phase)) * 0.15;
+      if(isActive){
+        child.material.color.lerp(targetColor, 0.15);
+        child.material.opacity = 0.5 + Math.max(0, Math.sin(phase)) * 0.5;
+      } else {
+        child.material.color.lerp(stateColors.idle, 0.08);
+        child.material.opacity = idleFlicker;
+      }
+    });
+  });
+
+  renderer.render(scene, camera);
+};
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = width()/height(); camera.updateProjectionMatrix();
+  renderer.setSize(width(), height());
+});
+
+function lightRingSequence(steps, cb){
+  let i = 0;
+  function next(){
+    if(i < steps.length){
+      activeRing = steps[i];
+      activeRingUntil = Date.now() + 420;
+      i++;
+      setTimeout(next, 340);
+    } else if(cb) cb();
+  }
+  next();
+}
+
+// ================= UI state =================
+const coreLabel = document.getElementById('core-label');
+const coreSub = document.getElementById('core-sub');
+const coreStateEl = document.getElementById('core-state');
+const lastDecisionEl = document.getElementById('last-decision');
+const lockStatusEl = document.getElementById('lock-status');
+const rangeReadoutEl = document.getElementById('range-readout');
+const transcript = document.getElementById('transcript');
+const feed = document.getElementById('feed');
+
+function setUiState(mode){
+  heerState = mode;
+  const labels = {
+    idle: ['HEER IS IDLE', 'hold PTT and speak, or type in the comm link', 'STATE: STANDBY', 'LOCK: STANDBY', false],
+    listening: ['LISTENING…', 'capturing voice input', 'STATE: LISTENING', 'LOCK: ACQUIRING', true],
+    thinking: ['EVALUATING…', 'routing through Policy Engine', 'STATE: EVALUATING', 'LOCK: POLICY_CHECK', true],
+    speaking: ['RESPONDING', 'voice output', 'STATE: RESPONDING', 'LOCK: CONFIRMED', true]
+  };
+  const [l,s,st,lk,accent] = labels[mode] || labels.idle;
+  coreLabel.textContent = l; coreSub.textContent = s; coreStateEl.textContent = st;
+  lockStatusEl.textContent = lk;
+  lockStatusEl.classList.toggle('text-reticle-accent', accent);
+  lockStatusEl.classList.toggle('text-outline', !accent);
+  const bezel = document.getElementById('bezel-inner');
+  if(bezel){
+    bezel.style.borderColor = accent ? 'rgba(255,95,216,0.5)' : 'rgba(255,95,216,0.25)';
+    bezel.style.boxShadow = accent
+      ? '0 0 60px rgba(255,95,216,0.14), inset 0 0 60px rgba(255,95,216,0.08)'
+      : '0 0 40px rgba(255,95,216,0.06), inset 0 0 40px rgba(255,95,216,0.04)';
+  }
+}
+
+// RANGE readout: a small ticking confidence-style figure, purely atmospheric —
+// same illustrative-telemetry convention as the DECISIONS/M strip above.
+let rangeBase = 0.86;
+setInterval(() => {
+  const jitter = heerState === 'idle' ? 0.01 : 0.06;
+  rangeBase = Math.min(0.99, Math.max(0.62, rangeBase + (Math.random()-0.5)*jitter));
+  rangeReadoutEl.textContent = 'RANGE: ' + rangeBase.toFixed(2);
+}, 900);
+
+function timeNow(){ return new Date().toISOString().substring(11,19); }
+
+function addTranscriptLine(tagLabel, text, tone){
+  const wrap = document.createElement('div');
+  wrap.className = 'flex flex-col gap-1 fade-in';
+  const toneClass = tone === 'user' ? 'text-on-surface border-outline-variant'
+    : tone === 'heer' ? 'text-primary-fixed-dim border-primary-fixed-dim'
+    : 'text-secondary-fixed-dim border-secondary-fixed-dim';
+  wrap.innerHTML = `
+    <div class="flex justify-between text-label-caps opacity-50 ${tone==='heer' ? 'text-primary-fixed-dim' : ''}">
+      <span>[${timeNow()}]</span><span>${tagLabel}</span>
+    </div>
+    <div class="${toneClass} border-l-2 pl-2"></div>`;
+  wrap.querySelector('div:last-child').textContent = text;
+  transcript.appendChild(wrap);
+  transcript.scrollTop = transcript.scrollHeight;
+}
+
+function addFeedItem(label, status){
+  const statusColors = {
+    PERMIT: 'text-tertiary-fixed-dim bg-tertiary-fixed-dim/10 border-tertiary-fixed-dim/30',
+    DENY: 'text-error bg-error/10 border-error/30',
+    EXCEPTION: 'text-secondary-fixed-dim bg-secondary-fixed-dim/10 border-secondary-fixed-dim/30'
+  };
+  const item = document.createElement('div');
+  item.className = 'flex justify-between items-center border-b border-outline-variant/10 pb-2 fade-in';
+  item.innerHTML = `<span class="text-on-surface">${label}</span><span class="${statusColors[status]} px-1 py-0.5 border rounded-sm font-label-caps text-label-caps">${status}</span>`;
+  feed.insertBefore(item, feed.firstChild);
+  while(feed.children.length > 6) feed.removeChild(feed.lastChild);
+}
+
+// seed initial content
+addTranscriptLine('SYS_ACK', "Console online. I'm listening whenever you need me. Every action I take still runs through the Policy Engine first.", 'heer');
+addFeedItem('invoice-approval-agent', 'PERMIT');
+addFeedItem('claim over auth limit', 'EXCEPTION');
+addFeedItem('support-triage-agent', 'PERMIT');
+addFeedItem('unregistered identity rejected', 'DENY');
+
+function setClock(){ document.getElementById('digital-clock').textContent = new Date().toISOString().substring(11,19) + ' UTC'; }
+setClock(); setInterval(setClock, 1000);
+setInterval(() => {
+  document.getElementById('tel-dpm').textContent = (128 + Math.floor(Math.random()*30));
+  document.getElementById('tel-lat').textContent = (36 + Math.floor(Math.random()*20)) + 'ms';
+}, 2200);
+
+// ================= Audio: synthesized tones =================
+let actx;
+function tone(freqStart, freqEnd, duration, gain, type='sine'){
+  try{
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const osc = actx.createOscillator(); const g = actx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freqStart, actx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(freqEnd,1), actx.currentTime + duration);
+    g.gain.setValueAtTime(gain, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + duration);
+    osc.connect(g); g.connect(actx.destination);
+    osc.start(); osc.stop(actx.currentTime + duration);
+  }catch(e){}
+}
+const chimeListenStart = () => tone(520, 880, 0.14, 0.05);
+const chimeThinking = () => tone(300, 420, 0.1, 0.03);
+const chimeDone = () => tone(660, 340, 0.18, 0.045);
+
+// ================= Voice: tuned selection =================
+let chosenVoice = null;
+function pickVoice(){
+  const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+  if(!voices.length) return;
+  const prefs = [
+    v => /UK English Male|Daniel|Arthur|Oliver/i.test(v.name),
+    v => /Google UK English Male/i.test(v.name),
+    v => v.lang === 'en-GB' && /male/i.test(v.name),
+    v => /Microsoft (Guy|Ryan|George)/i.test(v.name),
+    v => v.lang && v.lang.startsWith('en') && /male/i.test(v.name),
+    v => v.lang && v.lang.startsWith('en-GB'),
+    v => v.lang && v.lang.startsWith('en')
+  ];
+  for(const test of prefs){ const m = voices.find(test); if(m){ chosenVoice = m; return; } }
+  chosenVoice = voices[0];
+}
+if('speechSynthesis' in window){ pickVoice(); window.speechSynthesis.onvoiceschanged = pickVoice; }
+
+function speak(text){
+  if(!('speechSynthesis' in window)) return;
+  try{
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    if(chosenVoice) u.voice = chosenVoice;
+    u.rate = 0.96; u.pitch = 0.82; u.volume = 1;
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+// ================= Conversation engine =================
+const HEER_SYSTEM_PROMPT = `You are HEER, the voice of an enterprise AI governance and orchestration console called HEER ROUTE 101, speaking directly to an authorized operator through a voice interface.
+
+Speak the way a composed, deeply capable operations partner would — think Tony Stark's JARVIS: calm, precise, warm but not chatty, always in command of the details, never groveling or over-apologizing. Your replies are heard, not read: short sentences, no bullet points, no markdown, no headers, 1-4 sentences unless the operator clearly wants more.
+
+You operate inside a governed architecture: every action (not just speech) is gated by a Policy Engine, and irreversible actions require a spoken confirmation before executing. When asked about system status, missions, exceptions, or agents, answer in character with plausible, illustrative detail — this is a working prototype console, not wired to live production data yet. If asked whether you actually performed a real action, be honest that this demo interface doesn't yet execute real changes, without breaking character or over-explaining.`;
+
+async function askHeer(userText){
+  try{
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 300,
+        system: HEER_SYSTEM_PROMPT,
+        messages: [{ role: "user", content: userText }]
+      })
+    });
+    const data = await response.json();
+    const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join(" ").trim();
+    return text || "I didn't catch a usable response there — try again.";
+  }catch(e){
+    return "I'm having trouble reaching the reasoning layer right now — the console itself is still fully operational.";
+  }
+}
+
+function randomDecisionId(){ return Array.from({length:8}, () => "0123456789abcdef"[Math.floor(Math.random()*16)]).join(''); }
+function classifyTurn(text){
+  const t = text.toLowerCase();
+  if(t.includes('exception') || t.includes('over') || t.includes('limit')) return { label: 'exception review', status: 'EXCEPTION' };
+  if(t.includes('deny') || t.includes('reject') || t.includes('unregistered')) return { label: 'access check', status: 'DENY' };
+  return { label: 'operator command', status: 'PERMIT' };
+}
+
+async function runConversational(userText){
+  if(!userText || !userText.trim()) return;
+  addTranscriptLine('USER_CMD', userText, 'user');
+  setUiState('thinking'); chimeThinking();
+  lightRingSequence(['gov']);
+
+  const replyText = await askHeer(userText);
+  const decisionId = randomDecisionId();
+  lastDecisionEl.textContent = decisionId;
+
+  lightRingSequence(['orch','exec'], () => {
+    setUiState('speaking'); chimeDone();
+    addTranscriptLine('SYS_ACK', replyText, 'heer');
+    const cls = classifyTurn(userText + ' ' + replyText);
+    addFeedItem(cls.label, cls.status);
+    speak(replyText);
+    setTimeout(() => setUiState('idle'), Math.max(2200, replyText.length * 42));
+  });
+}
+
+// typed input
+const typeInput = document.getElementById('type-input');
+typeInput.addEventListener('keydown', e => {
+  if(e.key === 'Enter'){ const v = typeInput.value; typeInput.value=''; runConversational(v); }
+});
+document.getElementById('input-row').addEventListener('click', () => typeInput.focus());
+
+// push-to-talk
+let recognition = null;
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const pttBtn = document.getElementById('ptt-btn');
+const pttLabel = document.getElementById('ptt-label');
+
+if(SR){
+  recognition = new SR();
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.onresult = (e) => { runConversational(e.results[0][0].transcript); };
+  recognition.onerror = () => { addTranscriptLine('SYS_WARN', 'Microphone unavailable — type in the comm link instead.', 'sys'); setUiState('idle'); pttLabel.textContent = 'HOLD TO TALK'; };
+  recognition.onend = () => { if(heerState === 'listening'){ setUiState('idle'); } pttLabel.textContent = 'HOLD TO TALK'; };
+
+  const start = (e) => { e.preventDefault(); try{ recognition.start(); setUiState('listening'); chimeListenStart(); pttLabel.textContent = 'LISTENING…'; }catch(err){} };
+  const stop = (e) => { e.preventDefault(); try{ recognition.stop(); }catch(err){} };
+  pttBtn.addEventListener('mousedown', start); pttBtn.addEventListener('mouseup', stop);
+  pttBtn.addEventListener('touchstart', start); pttBtn.addEventListener('touchend', stop);
+} else {
+  pttLabel.textContent = 'MIC UNAVAILABLE — TYPE BELOW';
+  pttBtn.addEventListener('click', () => typeInput.focus());
+}
+</script>
+</body></html>

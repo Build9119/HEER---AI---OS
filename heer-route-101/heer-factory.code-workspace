@@ -1,0 +1,138 @@
+{
+  "folders": [
+    { "name": "🏭 MASTER — Dashboard", "path": "." },
+    { "name": "🔐 AGENT-02 — Identity & Tenant [R101-02]", "path": "." },
+    { "name": "⚖️  AGENT-03 — Policy Engine [R101-03]", "path": "." },
+    { "name": "🛡️  AGENT-07 — Worker Security [R101-07]", "path": "." },
+    { "name": "📋 AGENT-08 — Audit [R101-08]", "path": "." },
+    { "name": "🗂️  AGENT-05 — AI Registry [R101-05]", "path": "." },
+    { "name": "🎯 AGENT-06 — Mission Engine [R101-06]", "path": "." },
+    { "name": "🚨 AGENT-04 — Exceptions Node [R101-04]", "path": "." },
+    { "name": "🧠 AGENT-11 — Learning Loop [R101-11]", "path": "." },
+    { "name": "🎙️  AGENT-12 — Voice Console [R101-12]", "path": "." }
+  ],
+  "settings": {
+    "cline.autoApproveRead": true,
+    "cline.autoApproveEdit": true,
+    "cline.autoApproveCommand": false,
+    "cline.allowedCommands": [
+      "bash factory/session-guard.sh *",
+      "bash factory/gate-check.sh *",
+      "bash factory/orchestrate.sh *",
+      "make guard-*",
+      "make gate-*",
+      "make status",
+      "make ps",
+      "git status",
+      "git log *",
+      "git diff *",
+      "git show *",
+      "docker-compose ps",
+      "docker compose ps",
+      "jq *",
+      "cat *",
+      "ls *",
+      "find *",
+      "grep *",
+      "npm test",
+      "npm run test",
+      "npx vitest run",
+      "npx jest *",
+      "psql * -c *"
+    ],
+    "cline.deniedCommands": [
+      "docker-compose up*",
+      "docker compose up*",
+      "docker-compose down*",
+      "git commit*",
+      "git push*",
+      "git reset --hard*",
+      "git clean -fd*",
+      "rm -rf*",
+      "sudo *",
+      "curl * | bash*",
+      "wget * | bash*"
+    ],
+    "terminal.integrated.env.osx": {
+      "HEER_FACTORY": "1",
+      "HEER_REPO": "${workspaceFolder}"
+    },
+    "terminal.integrated.env.linux": {
+      "HEER_FACTORY": "1",
+      "HEER_REPO": "${workspaceFolder}"
+    },
+    "terminal.integrated.profiles.osx": {
+      "HEER Factory": {
+        "path": "bash",
+        "args": ["-c", "echo '=== HEER Factory Terminal ===' && make status; exec bash"]
+      }
+    },
+    "editor.formatOnSave": true,
+    "files.exclude": { "**/node_modules": true }
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Factory: Bootstrap",
+        "type": "shell",
+        "command": "bash factory/bootstrap.sh",
+        "group": "build",
+        "presentation": { "reveal": "always", "panel": "new" }
+      },
+      {
+        "label": "Factory: Status",
+        "type": "shell",
+        "command": "bash factory/orchestrate.sh status",
+        "group": "test",
+        "presentation": { "reveal": "always", "panel": "shared" }
+      },
+      {
+        "label": "Start: AGENT-02",
+        "type": "shell",
+        "command": "bash factory/orchestrate.sh start AGENT-02",
+        "presentation": { "reveal": "always", "panel": "new", "focus": true }
+      },
+      {
+        "label": "Start: Lane A (03+07+08 parallel)",
+        "type": "shell",
+        "command": "bash factory/orchestrate.sh start-lane-a",
+        "presentation": { "reveal": "always", "panel": "new" }
+      },
+      {
+        "label": "Start: Lane B (05)",
+        "type": "shell",
+        "command": "bash factory/orchestrate.sh start-lane-b",
+        "presentation": { "reveal": "always", "panel": "new" }
+      },
+      {
+        "label": "Start: Lane C (06+04 parallel)",
+        "type": "shell",
+        "command": "bash factory/orchestrate.sh start-lane-c",
+        "presentation": { "reveal": "always", "panel": "new" }
+      },
+      {
+        "label": "Start: Lane D (11+12 parallel)",
+        "type": "shell",
+        "command": "bash factory/orchestrate.sh start-lane-d",
+        "presentation": { "reveal": "always", "panel": "new" }
+      },
+      {
+        "label": "Gate: Check AGENT-02",
+        "type": "shell",
+        "command": "bash factory/gate-check.sh AGENT-02",
+        "presentation": { "reveal": "always", "panel": "shared" }
+      },
+      {
+        "label": "Emergency: Kill All Agents",
+        "type": "shell",
+        "command": "bash factory/orchestrate.sh kill-all",
+        "presentation": { "reveal": "always", "panel": "shared" }
+      }
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "compounds": []
+  }
+}
