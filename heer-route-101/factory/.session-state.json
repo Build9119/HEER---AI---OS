@@ -1,0 +1,17 @@
+{
+  "bootstrapped_at": "2026-08-21T11:52:19Z",
+  "repo_root": "/Users/delit/Documents/HEER - AI - OS/heer-route-101",
+  "git_branch": "main",
+  "git_head": "57b5483",
+  "agents": {
+    "AGENT-02": { "status": "NOT_STARTED", "work_package": "R101-02", "gate_accepted": false },
+    "AGENT-03": { "status": "NOT_STARTED", "work_package": "R101-03", "gate_accepted": false },
+    "AGENT-04": { "status": "NOT_STARTED", "work_package": "R101-04", "gate_accepted": false },
+    "AGENT-05": { "status": "NOT_STARTED", "work_package": "R101-05", "gate_accepted": false },
+    "AGENT-06": { "status": "NOT_STARTED", "work_package": "R101-06", "gate_accepted": false },
+    "AGENT-07": { "status": "NOT_STARTED", "work_package": "R101-07", "gate_accepted": false },
+    "AGENT-08": { "status": "NOT_STARTED", "work_package": "R101-08", "gate_accepted": false },
+    "AGENT-11": { "status": "NOT_STARTED", "work_package": "R101-11", "gate_accepted": false },
+    "AGENT-12": { "status": "NOT_STARTED", "work_package": "R101-12", "gate_accepted": false }
+  }
+}
