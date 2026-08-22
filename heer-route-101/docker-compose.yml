@@ -1,54 +1,36 @@
 services:
-  heer-keycloak:
-    image: quay.io/keycloak/keycloak:latest
-    command: ["start-dev", "--import-realm", "--realm-import-file=/opt/keycloak/data/import/heer-realm.json"]
-    volumes:
-      - ./heer-route-101/infra/keycloak/heer-realm.json:/opt/keycloak/data/import/heer-realm.json
-    ports:
-      - "8080:8080"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:8080/health"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
-
-  heer-spire-server:
-    image: stage/sphire:latest
-    command: ["serve", "--bundle-endpoint=http://0.0.0.0:8777"]
-    ports:
-      - "8777:8777"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:8777/health"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
-
-  heer-spire-agent:
-    image: stage/sphire-agent:latest
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:8444/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  heer-postgres:
+  postgres:
     image: postgres:16
     environment:
       POSTGRES_USER: heer
       POSTGRES_PASSWORD: heer_dev_only
       POSTGRES_DB: heer
-    volumes:
-      - pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U heer"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-volumes:
-  pgdata:
-    name: pgdata
+  opa:
+    image: openpolicyagent/opa:latest-debug
+    command: ["run", "--server", "--addr=0.0.0.0:8181", "--diagnostic-addr=0.0.0.0:8182", "/policies"]
+    ports:
+      - "8181:8181"
+      - "8182:8182"
+    volumes:
+      - ./policies:/policies
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8182/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
